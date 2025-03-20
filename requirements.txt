@@ -13,3 +13,4 @@ spacy==3.6.1
 nltk==3.8.1
 PyMuPDF==1.23.3
 humanize==4.8.0
+tokenizers==0.12.1
