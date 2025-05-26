@@ -1,4 +1,4 @@
-streamlit==1.32.0
+streamlit>=1.20
 transformers==4.26.1
 tokenizers==0.12.1
 pandas==2.0.3

@@ -523,7 +523,7 @@ def display_recommendations_ui(filtered_df, all_requirements):
                     st.session_state['rejected_indices'][req] = set()
                     if req in st.session_state['current_recommendation']:
                         del st.session_state['current_recommendation'][req]
-                    st.experimental_rerun()
+                    st.rerun()
                 continue
             
             # Get the best non-rejected recommendation
@@ -570,13 +570,13 @@ def display_recommendations_ui(filtered_df, all_requirements):
             
             # Set a flag to show the final table
             st.session_state['show_final_table'] = True
-            st.experimental_rerun()
+            st.rerun()
         
         # Add a button to reset all rejections - also at the bottom
         if st.button("Reset All Rejections"):
             st.session_state['rejected_indices'] = {}
             st.session_state['current_recommendation'] = {}
-            st.experimental_rerun()
+            st.rerun()
 
 def display_recommendation_card(row, req, best_idx, is_duplicate, req_recommendations):
     """Display a card with recommendation details and action buttons"""
@@ -710,7 +710,7 @@ def display_recommendation_card(row, req, best_idx, is_duplicate, req_recommenda
                     st.write(f"Added {best_idx} to rejected indices for {req}")
                     st.write(f"Rejected indices now: {st.session_state['rejected_indices'][req]}")
                 
-                st.experimental_rerun()
+                st.rerun()
             
             # Accept button - now with unique key
             if st.button(f"Accept", key=f"accept_{unique_id}"):
@@ -814,7 +814,7 @@ def display_final_recommendations(all_requirements):
         st.session_state['accepted_recommendations'] = {}
         st.session_state['already_recommended_urls'] = set()
         st.session_state['show_final_table'] = False
-        st.experimental_rerun()
+        st.rerun()
 
 def generate_download_data(all_requirements):
     """Generate data for CSV download"""
