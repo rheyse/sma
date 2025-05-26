@@ -720,12 +720,6 @@ def display_recommendation_card(row, req, best_idx, is_duplicate, req_recommenda
 
                 st.rerun()
 
-            # Accept button - now with unique key
-            if st.button(f"Accept", key=f"accept_{unique_id}"):
-                # Store the accepted recommendation
-                st.session_state['already_recommended_urls'].add(course_id)
-                st.success(f"Recommendation accepted for '{req}'")
-
             # Show previous recommendation if available
             if st.button(f"Show Previous", key=f"show_prev_{unique_id}"):
                 history = st.session_state['rejection_history'].get(req, [])
@@ -735,6 +729,12 @@ def display_recommendation_card(row, req, best_idx, is_duplicate, req_recommenda
                     if req in st.session_state['current_recommendation']:
                         del st.session_state['current_recommendation'][req]
                     st.rerun()
+
+            # Accept button - now with unique key
+            if st.button(f"Accept", key=f"accept_{unique_id}"):
+                # Store the accepted recommendation
+                st.session_state['already_recommended_urls'].add(course_id)
+                st.success(f"Recommendation accepted for '{req}'")
 
             # Reject all remaining recommendations for this requirement
             if st.button(f"Reject All", key=f"reject_all_{unique_id}"):
