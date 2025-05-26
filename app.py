@@ -454,6 +454,9 @@ def display_recommendations_ui(filtered_df, all_requirements):
     if 'accepted_recommendations' not in st.session_state:
         st.session_state['accepted_recommendations'] = {}  # Dict to store accepted recommendations
 
+    if 'rejection_history' not in st.session_state:
+        st.session_state['rejection_history'] = {}  # Track order of rejections per requirement
+
     if 'already_recommended_urls' not in st.session_state:
         st.session_state['already_recommended_urls'] = set()  # Set to track already recommended course URLs
     
@@ -498,9 +501,11 @@ def display_recommendations_ui(filtered_df, all_requirements):
                 st.warning(f"No matching courses found for: {req}")
                 continue
             
-            # Initialize rejected indices for this requirement if not already done
+            # Initialize rejected indices and history for this requirement if not already done
             if req not in st.session_state['rejected_indices']:
                 st.session_state['rejected_indices'][req] = set()
+            if req not in st.session_state['rejection_history']:
+                st.session_state['rejection_history'][req] = []
                 
             # Debug: Show current rejected indices
             if st.session_state.get('debug_mode', False):
@@ -690,16 +695,19 @@ def display_recommendation_card(row, req, best_idx, is_duplicate, req_recommenda
             total_count = len(req_recommendations)
             
             st.write(f"Showing recommendation {rejection_count + 1} of {total_count}")
-            
+
             # Reject button - now with unique key
             if st.button(f"Reject & Show Next", key=f"reject_{unique_id}"):
                 # Add this index to the rejected set for this requirement
                 if req not in st.session_state['rejected_indices']:
                     st.session_state['rejected_indices'][req] = set()
-                
+                if req not in st.session_state['rejection_history']:
+                    st.session_state['rejection_history'][req] = []
+
                 # Add the string version of the index for consistent comparison
                 st.session_state['rejected_indices'][req].add(str(best_idx))
-                
+                st.session_state['rejection_history'][req].append(str(best_idx))
+
                 # Remove from current recommendation if present
                 if req in st.session_state['current_recommendation'] and \
                    str(st.session_state['current_recommendation'][req]['idx']) == str(best_idx):
@@ -709,14 +717,33 @@ def display_recommendation_card(row, req, best_idx, is_duplicate, req_recommenda
                 if st.session_state.get('debug_mode', False):
                     st.write(f"Added {best_idx} to rejected indices for {req}")
                     st.write(f"Rejected indices now: {st.session_state['rejected_indices'][req]}")
-                
+
                 st.rerun()
-            
+
             # Accept button - now with unique key
             if st.button(f"Accept", key=f"accept_{unique_id}"):
                 # Store the accepted recommendation
                 st.session_state['already_recommended_urls'].add(course_id)
                 st.success(f"Recommendation accepted for '{req}'")
+
+            # Show previous recommendation if available
+            if st.button(f"Show Previous", key=f"show_prev_{unique_id}"):
+                history = st.session_state['rejection_history'].get(req, [])
+                if history:
+                    last_idx = history.pop()
+                    st.session_state['rejected_indices'][req].discard(last_idx)
+                    if req in st.session_state['current_recommendation']:
+                        del st.session_state['current_recommendation'][req]
+                    st.rerun()
+
+            # Reject all remaining recommendations for this requirement
+            if st.button(f"Reject All", key=f"reject_all_{unique_id}"):
+                all_indices = {str(i) for i in req_recommendations.index}
+                st.session_state['rejected_indices'][req] = all_indices
+                st.session_state['rejection_history'][req] = list(all_indices)
+                if req in st.session_state['current_recommendation']:
+                    del st.session_state['current_recommendation'][req]
+                st.rerun()
         
         st.markdown("---")
 
