@@ -157,6 +157,40 @@ def search_programs(keyword, programs_df, exclude_keys=None, max_results=10):
 
     return results.head(max_results)
 
+def render_program_search(req, programs_df, exclude_keys=None):
+    """Render a search UI allowing the user to pick a specific program"""
+    if exclude_keys is None:
+        exclude_keys = []
+
+    with st.expander("Program Search"):
+        search_kw = st.text_input(f"Keyword search for '{req}'", key=f"search_{req}")
+        if search_kw:
+            results = search_programs(search_kw, programs_df, exclude_keys)
+            if results.empty:
+                st.write("No matching programs found.")
+            else:
+                for s_idx, s_row in results.iterrows():
+                    st.write(f"**{s_row['title']}**")
+                    short_sum = s_row['summary'][:150] + ("..." if len(s_row['summary']) > 150 else "")
+                    st.write(short_sum)
+                    if st.button("Use this program", key=f"use_{req}_{s_idx}"):
+                        selected = {
+                            'program_key': s_row['key'],
+                            'program_title': s_row['title'],
+                            'program_type': s_row['program_type'],
+                            'duration': s_row['duration'],
+                            'difficulty': s_row['difficulty'],
+                            'url': s_row['catalog_url'],
+                            'summary': s_row.get('summary', ''),
+                            'skills': s_row.get('skills', []),
+                            'similarity_score': '',
+                            'recommendation_reason': 'Selected via search'
+                        }
+                        st.session_state['current_recommendation'][req] = {'idx': s_idx, 'row': selected}
+                        st.session_state['already_recommended_urls'].add(str(s_row.get('key', s_row.get('catalog_url', ''))))
+                        st.success(f"Selected program for '{req}'")
+                        st.rerun()
+
 # ============== DATA LOADING & PROCESSING ==============
 
 def extract_text_from_file(uploaded_file):
@@ -583,6 +617,8 @@ def display_recommendations_ui(filtered_df, all_requirements, programs_df):
             # If all recommendations have been rejected
             if not available_rows:
                 st.info(f"All available recommendations for '{req}' have been reviewed. No more alternatives available.")
+                # Allow user to search the catalog even when everything is rejected
+                render_program_search(req, programs_df, req_recommendations['program_key'].tolist())
                 # Reset rejection state to start over if user clicks
                 if st.button(f"Start Over for '{req}'", key=f"start_over_{req}"):
                     st.session_state['rejected_indices'][req] = set()
@@ -612,29 +648,12 @@ def display_recommendations_ui(filtered_df, all_requirements, programs_df):
             # Create recommendation card
 
             try:
-                display_recommendation_card(best_row, req, best_idx, is_duplicate, req_recommendations)
+                display_recommendation_card(best_row, req, best_idx, is_duplicate, req_recommendations, programs_df)
             except Exception as e:
                 st.error(f"Error displaying recommendation: {str(e)}")
                 st.write("Recommendation data:")
                 st.write(best_row)
 
-            # -------- Manual search option --------
-            with st.expander("Find Additional Programs"):
-                search_kw = st.text_input(f"Keyword search for '{req}'", key=f"search_{req}")
-                if search_kw:
-                    exclude = req_recommendations['program_key'].tolist()
-                    results = search_programs(search_kw, programs_df, exclude)
-                    if results.empty:
-                        st.write("No matching programs found.")
-                    else:
-                        for s_idx, s_row in results.iterrows():
-                            st.write(f"**{s_row['title']}**")
-                            short_sum = s_row['summary'][:150] + ("..." if len(s_row['summary']) > 150 else "")
-                            st.write(short_sum)
-                            if st.button("Use this program", key=f"use_{req}_{s_idx}"):
-                                st.session_state['current_recommendation'][req] = {'idx': s_idx, 'row': s_row.to_dict()}
-                                st.session_state['already_recommended_urls'].add(str(s_row.get('key', s_row.get('catalog_url', ''))))
-                                st.success(f"Selected program for '{req}'")
         
         # Move the "Accept Current Recommendations" button to the bottom of the page
         st.markdown("---")
@@ -662,7 +681,7 @@ def display_recommendations_ui(filtered_df, all_requirements, programs_df):
             st.session_state['current_recommendation'] = {}
             st.rerun()
 
-def display_recommendation_card(row, req, best_idx, is_duplicate, req_recommendations):
+def display_recommendation_card(row, req, best_idx, is_duplicate, req_recommendations, programs_df):
     """Display a card with recommendation details and action buttons"""
     # Ensure we're working with scalar values, not Series
     if hasattr(row, 'to_dict'):
@@ -823,8 +842,10 @@ def display_recommendation_card(row, req, best_idx, is_duplicate, req_recommenda
                 if req in st.session_state['current_recommendation']:
                     del st.session_state['current_recommendation'][req]
                 st.rerun()
-        
-        st.markdown("---")
+        # Offer manual search after the action buttons
+        render_program_search(req, programs_df, req_recommendations['program_key'].tolist())
+
+    st.markdown("---")
 
 def display_final_recommendations(all_requirements):
     """Display the final table of accepted recommendations"""
