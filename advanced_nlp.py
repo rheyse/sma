@@ -1,3 +1,4 @@
+import os
 import re
 import nltk
 import numpy as np
@@ -13,6 +14,9 @@ try:
 except ImportError:
     print("Warning: sentence-transformers could not be imported. Falling back to TF-IDF only.")
     SENTENCE_TRANSFORMERS_AVAILABLE = False
+
+# Default embedding model for sentence transformers
+DEFAULT_EMBEDDING_MODEL = "all-mpnet-base-v2"
 
 # Try importing spaCy, but handle the error if it fails
 try:
@@ -91,16 +95,17 @@ TECH_PATTERNS = {
 
 # Load the sentence transformer model
 def get_sentence_transformer():
-    """Load and return a sentence transformer model"""
+    """Load and return a sentence transformer model."""
     if not SENTENCE_TRANSFORMERS_AVAILABLE:
         return None
-        
+
+    model_name = os.getenv("SMA_EMBEDDING_MODEL", DEFAULT_EMBEDDING_MODEL)
+
     try:
-        # Using a smaller model for faster processing
-        model = SentenceTransformer('paraphrase-MiniLM-L6-v2')
+        model = SentenceTransformer(model_name)
         return model
     except Exception as e:
-        print(f"Error loading sentence transformer model: {e}")
+        print(f"Error loading sentence transformer model '{model_name}': {e}")
         return None
 
 # Advanced text preprocessing
