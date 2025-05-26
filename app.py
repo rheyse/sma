@@ -102,53 +102,6 @@ def identify_matching_terms(requirement, content, min_length=4):
         return ", ".join(all_matches)
     return ""
 
-def group_similar_requirements(requirements, similarity_threshold=0.6):
-    """Group similar requirements together"""
-    if len(requirements) <= 1:
-        return requirements
-        
-    # Vectorize the requirements
-    vectorizer = TfidfVectorizer()
-    try:
-        tfidf_matrix = vectorizer.fit_transform(requirements)
-        
-        # Calculate similarity between all pairs
-        similarity_matrix = cosine_similarity(tfidf_matrix)
-        
-        # Group similar requirements
-        groups = []
-        used_indices = set()
-        
-        for i in range(len(requirements)):
-            if i in used_indices:
-                continue
-                
-            group = [i]
-            used_indices.add(i)
-            
-            for j in range(i+1, len(requirements)):
-                if j not in used_indices and similarity_matrix[i, j] > similarity_threshold:
-                    group.append(j)
-                    used_indices.add(j)
-                    
-            groups.append(group)
-        
-        # Take the first requirement from each group (or combine them)
-        grouped_requirements = []
-        for group in groups:
-            if len(group) == 1:
-                grouped_requirements.append(requirements[group[0]])
-            else:
-                # For multiple similar requirements, use the longest one as it's likely more informative
-                main_req = max([requirements[idx] for idx in group], key=len)
-                grouped_requirements.append(main_req)
-        
-        return grouped_requirements
-    
-    except:
-        # If vectorization fails, just return the original requirements
-        return requirements
-
 # ============== DATA LOADING & PROCESSING ==============
 
 def extract_text_from_file(uploaded_file):
@@ -219,91 +172,7 @@ def extract_requirements_from_file(uploaded_file):
     cleaned_requirements = [req.strip() for req in requirements if req and str(req).strip()]
     return cleaned_requirements
 
-def extract_individual_requirements(text):
-    """Extract distinct requirements from input text and group similar ones"""
-    # First, try to identify structured roles and skills
-    # Look for patterns like "Role: Skill" or lines with role-skill separation
-    requirements = []
-    
-    # Try to determine if the text is in a tabular format (like from Excel)
-    lines = text.split('\n')
-    
-    # Check if it looks like a structured table with roles and skills
-    role_skill_pattern = re.compile(r'^\s*([A-Za-z\s]+)\s+(.+)$')
-    
-    structured_items = []
-    current_role = None
-    
-    for line in lines:
-        line = line.strip()
-        if not line:
-            continue
-            
-        # Check if this line starts with a role identifier
-        match = role_skill_pattern.match(line)
-        if match:
-            role_candidate = match.group(1).strip()
-            skill_text = match.group(2).strip()
-            
-            # If the first part is short, it's likely a role
-            if len(role_candidate.split()) <= 3:
-                current_role = role_candidate
-                structured_items.append((current_role, skill_text))
-            else:
-                # This might be a continuation of previous skill
-                if current_role:
-                    structured_items.append((current_role, line))
-        elif current_role:
-            # Continuation line
-            structured_items.append((current_role, line))
-    
-    # If we found structured items, process them
-    if structured_items:
-        # Group by skills
-        skill_groups = {}
-        
-        for role, skill_text in structured_items:
-            # Clean up the skill text
-            clean_skill = skill_text.lower().strip()
-            
-            # Add to existing group if similar, or create new group
-            added = False
-            for key_skill, group in skill_groups.items():
-                # Simple similarity check - could use more sophisticated NLP here
-                if (clean_skill in key_skill or key_skill in clean_skill or
-                    any(word in key_skill for word in clean_skill.split() if len(word) > 4)):
-                    group.append((role, skill_text))
-                    added = True
-                    break
-            
-            if not added:
-                skill_groups[clean_skill] = [(role, skill_text)]
-        
-        # Create requirement statements
-        for key_skill, items in skill_groups.items():
-            roles = set(item[0] for item in items)
-            roles_str = ", ".join(roles)
-            requirement = f"{key_skill} ({roles_str})"
-            requirements.append(requirement)
-    else:
-        # If not structured, use sentence tokenization
-        sentences = sent_tokenize(text)
-        
-        # Filter out very short sentences and clean them
-        requirements = [s.strip() for s in sentences if len(s.split()) >= 3]
-        
-        # Group similar requirements
-        requirements = group_similar_requirements(requirements)
-    
-    return requirements
 
-def extract_advanced_requirements(text, max_requirements=15):
-    """Extract learning requirements using advanced NLP techniques"""
-    # Extract individual requirements
-    individual_requirements = extract_individual_requirements(text)
-    
-    # Limit the number of requirements
-    return individual_requirements[:max_requirements]
 
 # Add cache decorator to expensive operations
 @st.cache_data(ttl=3600)
