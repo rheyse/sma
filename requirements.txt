@@ -16,3 +16,5 @@ PyMuPDF==1.23.3
 humanize==4.8.0
 setuptools>=67.0.0
 wheel
+
+torch==2.1.0
