@@ -57,4 +57,14 @@ This is a Streamlit-based content recommendation engine that processes natural l
 - Enhance NLP processing with named entity recognition and transformer models
 - Implement more advanced matching algorithms
 - Add user feedback loop to improve recommendations
-- Expand file format support 
+- Expand file format support
+
+## Updating Program Data
+
+Recommendations are derived from the Udacity API or the bundled `sample_programs.csv` file. To refresh the dataset with the latest Udacity catalog, run:
+
+```bash
+python update_program_data.py
+```
+
+This will download the current catalog and overwrite `sample_programs.csv`. You can extend the script to integrate additional learning content providers.
