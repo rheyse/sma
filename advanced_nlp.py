@@ -199,10 +199,13 @@ def extract_role_skill_pairs(text):
                 
         # If no role pattern matches, check for skill patterns
         if not role_found and current_role:
-            for pattern in skill_patterns:
+            for idx, pattern in enumerate(skill_patterns):
                 match = re.search(pattern, line, re.IGNORECASE)
                 if match:
-                    skill = match.group(1 if "\\s*(.+)$" in pattern else 2).strip()
+                    # The first pattern captures the skill in group 2,
+                    # while the bullet pattern only has a single group.
+                    skill_group = 2 if idx == 0 else 1
+                    skill = match.group(skill_group).strip()
                     if skill:
                         skills.append((current_role, skill))
                     break
