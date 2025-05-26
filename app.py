@@ -8,6 +8,7 @@ from sklearn.metrics.pairwise import cosine_similarity
 import fitz  # PyMuPDF
 import nltk
 from nltk.tokenize import sent_tokenize
+from nltk.corpus import wordnet as wn
 import humanize
 import requests
 import traceback
@@ -23,18 +24,28 @@ if os.path.exists(sma_path):
 
 # Import advanced NLP module
 try:
-    from advanced_nlp import extract_advanced_requirements, compute_semantic_similarity, SENTENCE_TRANSFORMERS_AVAILABLE
+    from advanced_nlp import (
+        extract_advanced_requirements,
+        compute_semantic_similarity,
+        SENTENCE_TRANSFORMERS_AVAILABLE,
+        SPACY_AVAILABLE,
+        nlp,
+    )
 except ImportError as e:
     print(f"Error importing advanced NLP module: {e}")
     SENTENCE_TRANSFORMERS_AVAILABLE = False
+    SPACY_AVAILABLE = False
+    nlp = None
 
 # Download NLTK resources
 try:
     nltk.data.find('corpora/stopwords')
     nltk.data.find('tokenizers/punkt')
+    nltk.data.find('corpora/wordnet')
 except LookupError:
     nltk.download('stopwords')
     nltk.download('punkt')
+    nltk.download('wordnet')
 
 # ============== UTILITY FUNCTIONS ==============
 
@@ -72,34 +83,52 @@ def convert_duration_mins_to_human_readable(duration_mins):
     return humanize.naturaldelta(delta)
 
 def identify_matching_terms(requirement, content, min_length=4):
-    """Identify key terms that match between requirement and content"""
-    # Convert to lowercase for comparison
+    """Identify key terms that match between requirement and content."""
+
     req_lower = requirement.lower()
     content_lower = content.lower()
-    
-    # Extract words from requirement
-    req_words = set(word for word in req_lower.split() if len(word) >= min_length)
-    
-    # Find matching words in content
-    matches = [word for word in req_words if word in content_lower]
-    
-    # Add phrases (2-3 word combinations)
+
+    # Use spaCy for lemmatization if available
+    if SPACY_AVAILABLE and nlp is not None:
+        doc = nlp(req_lower)
+        tokens = [tok.lemma_ for tok in doc if tok.is_alpha]
+    else:
+        tokens = re.findall(r"\b\w+\b", req_lower)
+
+    # Words meeting the minimum length
+    req_words = [t for t in tokens if len(t) >= min_length]
+
+    matches = []
+    for word in req_words:
+        synonyms = {word}
+        try:
+            for syn in wn.synsets(word):
+                for lemma in syn.lemma_names():
+                    synonyms.add(lemma.lower().replace("_", " "))
+        except LookupError:
+            pass
+
+        if any(s in content_lower for s in synonyms):
+            matches.append(word)
+
+    # Phrase detection using lemmatized tokens
     req_phrases = []
-    words = req_lower.split()
-    for i in range(len(words)-1):
-        if len(words[i]) >= min_length or len(words[i+1]) >= min_length:
-            phrase = f"{words[i]} {words[i+1]}"
-            req_phrases.append(phrase)
-    
-    # Check for phrases in content
-    phrase_matches = [phrase for phrase in req_phrases if phrase in content_lower]
-    
-    # Combine individual words and phrases
-    all_matches = matches + phrase_matches
-    
-    # Return as comma-separated string
+    for i in range(len(tokens) - 1):
+        if len(tokens[i]) >= min_length or len(tokens[i + 1]) >= min_length:
+            phrase = f"{tokens[i]} {tokens[i + 1]}"
+            if phrase in content_lower:
+                req_phrases.append(phrase)
+
+    all_matches = matches + req_phrases
+
     if all_matches:
-        return ", ".join(all_matches)
+        seen = set()
+        ordered = []
+        for m in all_matches:
+            if m not in seen:
+                seen.add(m)
+                ordered.append(m)
+        return ", ".join(ordered)
     return ""
 
 # ============== DATA LOADING & PROCESSING ==============
