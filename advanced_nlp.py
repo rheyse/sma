@@ -199,20 +199,18 @@ def extract_role_skill_pairs(text):
                 
         # If no role pattern matches, check for skill patterns
         if not role_found and current_role:
-            for idx, pattern in enumerate(skill_patterns):
+            for pattern in skill_patterns:
                 match = re.search(pattern, line, re.IGNORECASE)
                 if match:
-                    # The first pattern captures the skill in group 2,
-                    # while the bullet pattern only has a single group.
-                    skill_group = 2 if idx == 0 else 1
-                    skill = match.group(skill_group).strip()
+                    if pattern == skill_patterns[0]:
+                        # skill list pattern captures skill in group 2
+                        skill = match.group(2).strip()
+                    else:
+                        # bullet pattern captures skill in group 1
+                        skill = match.group(1).strip()
                     if skill:
                         skills.append((current_role, skill))
                     break
-            
-            # If no skill pattern matches but we have a current role, treat the line as a skill
-            if not any(re.search(pattern, line, re.IGNORECASE) for pattern in skill_patterns):
-                skills.append((current_role, line))
     
     # Convert to requirements
     requirements = []
