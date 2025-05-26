@@ -19,17 +19,20 @@ except ImportError:
 DEFAULT_EMBEDDING_MODEL = "all-mpnet-base-v2"
 
 # Try importing spaCy, but handle the error if it fails
+nlp = None
 try:
     import spacy
-    SPACY_AVAILABLE = True
-    # Try to load the model, but don't fail if it's not available
     try:
         nlp = spacy.load("en_core_web_sm")
-    except:
+        SPACY_AVAILABLE = True
+    except Exception as e:
+        print(f"Warning: spaCy model could not be loaded: {e}")
         SPACY_AVAILABLE = False
+        nlp = None
 except ImportError:
     print("Warning: spaCy could not be imported. Some NLP features will be limited.")
     SPACY_AVAILABLE = False
+    nlp = None
 
 # Ensure NLTK resources are downloaded
 try:
