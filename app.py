@@ -102,6 +102,32 @@ def identify_matching_terms(requirement, content, min_length=4):
         return ", ".join(all_matches)
     return ""
 
+def search_programs(keyword, programs_df, exclude_keys=None, max_results=10):
+    """Search programs_df for a keyword in title, summary, or skills"""
+    if exclude_keys is None:
+        exclude_keys = []
+
+    keyword_lower = keyword.lower()
+
+    def skill_match(skills):
+        if isinstance(skills, list):
+            text = " ".join(skills).lower()
+        else:
+            text = str(skills).lower()
+        return keyword_lower in text
+
+    mask = (
+        programs_df['title'].str.lower().str.contains(keyword_lower, na=False) |
+        programs_df['summary'].str.lower().str.contains(keyword_lower, na=False) |
+        programs_df['skills'].apply(skill_match)
+    )
+
+    results = programs_df[mask]
+    if exclude_keys:
+        results = results[~results['key'].isin(exclude_keys)]
+
+    return results.head(max_results)
+
 # ============== DATA LOADING & PROCESSING ==============
 
 def extract_text_from_file(uploaded_file):
@@ -445,7 +471,7 @@ def recommend_content_semantic(requirements, programs_df, top_n=3):
 
 # ============== UI COMPONENTS ==============
 
-def display_recommendations_ui(filtered_df, all_requirements):
+def display_recommendations_ui(filtered_df, all_requirements, programs_df):
     """Display the recommendations UI with interactive elements"""
     # Initialize session state variables if they don't exist
     if 'rejected_indices' not in st.session_state:
@@ -545,12 +571,31 @@ def display_recommendations_ui(filtered_df, all_requirements):
             is_duplicate = course_id in st.session_state['already_recommended_urls']
             
             # Create recommendation card
+
             try:
                 display_recommendation_card(best_row, req, best_idx, is_duplicate, req_recommendations)
             except Exception as e:
                 st.error(f"Error displaying recommendation: {str(e)}")
                 st.write("Recommendation data:")
                 st.write(best_row)
+
+            # -------- Manual search option --------
+            with st.expander("Find Additional Programs"):
+                search_kw = st.text_input(f"Keyword search for '{req}'", key=f"search_{req}")
+                if search_kw:
+                    exclude = req_recommendations['program_key'].tolist()
+                    results = search_programs(search_kw, programs_df, exclude)
+                    if results.empty:
+                        st.write("No matching programs found.")
+                    else:
+                        for s_idx, s_row in results.iterrows():
+                            st.write(f"**{s_row['title']}**")
+                            short_sum = s_row['summary'][:150] + ("..." if len(s_row['summary']) > 150 else "")
+                            st.write(short_sum)
+                            if st.button("Use this program", key=f"use_{req}_{s_idx}"):
+                                st.session_state['current_recommendation'][req] = {'idx': s_idx, 'row': s_row.to_dict()}
+                                st.session_state['already_recommended_urls'].add(str(s_row.get('key', s_row.get('catalog_url', ''))))
+                                st.success(f"Selected program for '{req}'")
         
         # Move the "Accept Current Recommendations" button to the bottom of the page
         st.markdown("---")
@@ -1026,7 +1071,7 @@ def main():
                 st.warning("No recommendations match the selected filters")
             else:
                 # Display the interactive recommendations UI
-                display_recommendations_ui(filtered_recommendations, learning_requirements)
+                display_recommendations_ui(filtered_recommendations, learning_requirements, programs_df)
     
     else:
         st.info("Upload a file or enter learning requirements to get started")
