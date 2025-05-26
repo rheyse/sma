@@ -465,4 +465,4 @@ def compute_semantic_similarity(requirements, content_items):
     # Compute similarity matrix
     similarity_matrix = cosine_similarity(requirement_embeddings, content_embeddings)
     
-    return similarity_matrix 
+    return similarity_matrix
