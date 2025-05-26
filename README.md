@@ -36,7 +36,7 @@ This is a Streamlit-based content recommendation engine that processes natural l
 1. **File Ingestion Module**: Processes uploaded files using Pandas for CSV/XLS and PyMuPDF for PDFs.
 2. **NLP & Parsing Module**: Uses NLTK for text processing and learning requirement extraction.
 3. **Content Data Store**: Uses a Pandas DataFrame to store and query available learning content.
-4. **Recommendation Engine**: Uses TF-IDF vectorization and cosine similarity to match requirements with content.
+4. **Recommendation Engine**: Uses TF-IDF vectorization and cosine similarity to match requirements with content. Skill terms are given extra weight in the TF-IDF input to better reflect course relevance.
 5. **Streamlit Frontend**: Provides an interactive user interface for the entire process.
 
 ### Data Flow
