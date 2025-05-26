@@ -38,44 +38,54 @@ except LookupError:
 # Domain-specific technology and skill patterns
 TECH_PATTERNS = {
     "programming_languages": [
-        "python", "java", "javascript", "typescript", "c\\+\\+", "c#", "rust", "golang", "ruby", "php", "swift",
-        "kotlin", "scala", "r", "matlab", "perl", "shell", "bash", "powershell"
+        "python", "java", "javascript", "typescript", "c\\+\\+", "c#", "rust", "golang", "go", "ruby", "php", "swift",
+        "kotlin", "scala", "r", "matlab", "perl", "shell", "bash", "powershell", "objective-c", "dart", "lua", "clojure",
+        "haskell"
     ],
     "data_technologies": [
-        "kafka", "spark", "hadoop", "elasticsearch", "mongodb", "postgresql", "mysql", "sql", "nosql", "redis",
+        "kafka", "spark", "hadoop", "flink", "elasticsearch", "mongodb", "postgresql", "mysql", "sql", "nosql", "redis",
         "database", "data lake", "data warehouse", "etl", "data processing", "stream processing", "batch processing",
-        "real-time", "big data", "data engineering", "data science", "machine learning", "deep learning", 
-        "nifi", "airflow", "pandas", "numpy", "scikit-learn"
+        "real-time", "big data", "data engineering", "data science", "machine learning", "deep learning",
+        "nifi", "airflow", "pandas", "numpy", "scikit-learn", "hive", "presto", "snowflake", "bigquery", "redshift",
+        "databricks"
     ],
     "cloud_platforms": [
-        "aws", "amazon web services", "azure", "microsoft azure", "gcp", "google cloud", "cloud computing",
-        "cloud native", "serverless", "iaas", "paas", "saas", "containers", "docker", "kubernetes", "k8s"
+        "aws", "amazon web services", "azure", "microsoft azure", "gcp", "google cloud", "digitalocean", "heroku",
+        "openstack", "cloud foundry", "cloud computing", "cloud native", "serverless", "iaas", "paas", "saas",
+        "containers", "docker", "kubernetes", "k8s"
     ],
     "frameworks": [
-        "tensorflow", "pytorch", "keras", "react", "angular", "vue", "django", "flask", "spring", "spring boot",
-        "hibernate", "node.js", "express", "laravel", "rails", "asp.net"
+        "tensorflow", "pytorch", "keras", "fastapi", "sanic", "react", "angular", "vue", "svelte", "sveltekit", "next.js",
+        "nuxt.js", "ember", "django", "flask", "spring", "spring boot", "hibernate", "node.js", "express", "fastify",
+        "laravel", "symfony", "codeigniter", "rails", "asp.net", "quasar"
     ],
     "networking": [
-        "routing", "vpn", "ip", "tcp/ip", "dns", "subnetting", "networking", "network security", "firewall",
-        "load balancing", "cdn", "proxy", "reverse proxy", "http", "https", "ftp", "ssh", "ssl", "tls"
+        "routing", "bgp", "ospf", "nat", "vpn", "ip", "tcp/ip", "dns", "dhcp", "subnetting", "networking",
+        "network security", "firewall", "load balancing", "cdn", "proxy", "reverse proxy", "http", "https",
+        "ftp", "ssh", "ssl", "tls"
     ],
     "observability": [
-        "prometheus", "grafana", "kibana", "datadog", "splunk", "logstash", "fluentd", "logging", "monitoring",
-        "alerting", "tracing", "metrics", "observability", "sre", "site reliability", "devops", "slo", "sli"
+        "prometheus", "grafana", "kibana", "datadog", "splunk", "logstash", "fluentd", "jaeger", "zipkin",
+        "opentelemetry", "new relic", "logging", "monitoring", "alerting", "tracing", "metrics", "observability",
+        "sre", "site reliability", "devops", "slo", "sli"
     ],
     "cybersecurity": [
         "security", "encryption", "cryptography", "authentication", "authorization", "oauth", "oidc", "jwt",
-        "vulnerability", "penetration testing", "security audit", "compliance", "gdpr", "hipaa", "pci"
+        "vulnerability", "penetration testing", "security audit", "compliance", "gdpr", "hipaa", "pci",
+        "siem", "ids", "ips", "zero trust"
     ],
     "infrastructure": [
-        "infrastructure", "automation", "terraform", "ansible", "puppet", "chef", "ci/cd", "jenkins", "gitlab",
-        "github actions", "deployment", "configuration management", "infrastructure as code"
+        "infrastructure", "automation", "terraform", "ansible", "puppet", "chef", "helm", "packer", "vagrant",
+        "istio", "linkerd", "argo cd", "ci/cd", "jenkins", "gitlab", "github actions", "deployment",
+        "configuration management", "infrastructure as code"
     ],
     "5g_technology": [
-        "5g", "lte", "4g", "wireless", "telecommunications", "telco", "radio", "spectrum", "mimo", "beamforming"
+        "5g", "lte", "4g", "nr", "sub-6", "mmwave", "wireless", "telecommunications", "telco", "radio",
+        "spectrum", "mimo", "beamforming"
     ],
     "fiber_technology": [
-        "fiber", "ftx", "fttx", "ftth", "optical", "fixed wireless", "wireless access", "broadband"
+        "fiber", "ftx", "fttx", "ftth", "gpon", "xgs-pon", "passive optical", "optical", "ont",
+        "fixed wireless", "wireless access", "broadband"
     ]
 }
 
