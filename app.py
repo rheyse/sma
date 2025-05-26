@@ -330,10 +330,15 @@ def recommend_content_tfidf(requirements, programs_df, top_n=3):
     )
     
     # Combine text fields into a single text field for vectorization
+    # Skills often provide the clearest signal of course content, so we
+    # weight them more heavily by repeating the skill terms. The
+    # `SKILLS_WEIGHT` constant controls how many times the skills text is
+    # repeated for TF-IDF vectorization.
+    SKILLS_WEIGHT = 3
     df_copy['text_for_vectorization'] = (
-        df_copy['title'] + ' ' + 
-        df_copy['summary'] + ' ' + 
-        df_copy['skills_str']
+        df_copy['title'] + ' ' +
+        df_copy['summary'] + ' ' +
+        ((df_copy['skills_str'] + ' ') * SKILLS_WEIGHT).str.strip()
     )
     
     # Create TF-IDF vectorizer
