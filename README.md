@@ -29,6 +29,13 @@ This is a Streamlit-based content recommendation engine that processes natural l
 3. View the extracted text and learning requirements
 4. Explore the recommended content based on your learning needs
 
+### Configuring the Embedding Model
+
+The application loads a sentence transformer model to compute semantic
+similarity. By default it uses `all-mpnet-base-v2`. Set the
+`SMA_EMBEDDING_MODEL` environment variable to override this model name
+when starting the application.
+
 ## Technical Details
 
 ### Components
