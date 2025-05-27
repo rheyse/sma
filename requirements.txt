@@ -17,4 +17,7 @@ humanize==4.8.0
 setuptools>=67.0.0
 wheel
 
+# Install the spaCy English model when installing dependencies
+https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.6.0/en_core_web_sm-3.6.0-py3-none-any.whl
+
 torch==2.1.0
