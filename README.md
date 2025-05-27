@@ -13,15 +13,11 @@ This is a Streamlit-based content recommendation engine that processes natural l
 ## Installation
 
 1. Clone this repository
-2. Install the required packages:
+2. Install the required packages (including the spaCy model):
    ```
    pip install -r requirements.txt
    ```
-3. Download the spaCy English model:
-   ```
-   python -m spacy download en_core_web_sm
-   ```
-4. Download the required NLTK data (the application will attempt to do this automatically)
+3. Download the required NLTK data (the application will attempt to do this automatically)
 
 ## Usage
 

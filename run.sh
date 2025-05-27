@@ -3,7 +3,7 @@
 # Install dependencies
 echo "Installing dependencies..."
 python3 -m pip install -r requirements.txt
-python3 -m spacy download en_core_web_sm
+# The spaCy model is installed automatically by pip
 
 # Run the Streamlit app
 echo "Starting Content Recommendation Engine..."
