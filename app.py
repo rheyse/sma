@@ -310,6 +310,8 @@ def prepare_programs_df():
                     )
                     try:
                         programs_df['embedding'] = list(model.encode(programs_df['semantic_text'].tolist()))
+                        # Convert embeddings to tuples so caching can hash the dataframe
+                        programs_df['embedding'] = programs_df['embedding'].apply(lambda x: tuple(map(float, x)))
                     except Exception as e:
                         st.warning(f"Embedding computation failed: {e}")
 
@@ -387,6 +389,7 @@ def prepare_programs_df():
                 )
                 try:
                     programs_df['embedding'] = list(model.encode(programs_df['semantic_text'].tolist()))
+                    programs_df['embedding'] = programs_df['embedding'].apply(lambda x: tuple(map(float, x)))
                 except Exception as e:
                     st.warning(f"Embedding computation failed: {e}")
 
