@@ -139,7 +139,7 @@ def search_programs(keyword, programs_df, exclude_keys=None, max_results=10):
     keyword_lower = keyword.lower()
 
     def skill_match(skills):
-        if isinstance(skills, list):
+        if isinstance(skills, (list, tuple)):
             text = " ".join(skills).lower()
         else:
             text = str(skills).lower()
@@ -296,6 +296,7 @@ def prepare_programs_df():
                         return []
                 
                 programs_df['skills'] = programs_df['skills'].apply(safe_eval_skills)
+                programs_df['skills'] = programs_df['skills'].apply(lambda x: tuple(x))
             
             st.success(f"Loaded {len(programs_df)} programs from local file")
             return programs_df
@@ -354,7 +355,7 @@ def prepare_programs_df():
                 'difficulty': str(catalog_result.get('difficulty', 'Unknown')),
                 'title': str(catalog_result.get('title', 'Untitled')),
                 'summary': str(catalog_result.get('summary', '')),
-                'skills': list(catalog_result.get('skill_names', []))
+                'skills': tuple(catalog_result.get('skill_names', []))
             }
             programs.append(program)
         
@@ -388,7 +389,7 @@ def recommend_content_tfidf(requirements, programs_df, top_n=3):
     
     # Handle skills column - convert to string with special handling for NaN/None
     df_copy['skills_str'] = df_copy['skills'].apply(
-        lambda x: ' '.join(x) if isinstance(x, list) and len(x) > 0 
+        lambda x: ' '.join(x) if isinstance(x, (list, tuple)) and len(x) > 0
                  else (str(x) if pd.notna(x) else '')
     )
     
@@ -461,6 +462,10 @@ def recommend_content_tfidf(requirements, programs_df, top_n=3):
         else:
             st.warning("TF-IDF search returned no recommendations")
         
+        if 'skills' in recommendations_df.columns:
+            recommendations_df['skills'] = recommendations_df['skills'].apply(
+                lambda x: tuple(x) if isinstance(x, (list, tuple)) else x
+            )
         return recommendations_df
         
     except Exception as e:
@@ -476,7 +481,7 @@ def recommend_content_semantic(requirements, programs_df, top_n=3):
     content_texts = []
     for _, row in programs_df.iterrows():
         # Combine title, summary, and skills into a single text
-        skills_text = ' '.join(row['skills']) if isinstance(row['skills'], list) else str(row['skills'])
+        skills_text = ' '.join(row['skills']) if isinstance(row['skills'], (list, tuple)) else str(row['skills'])
         content_text = f"{row['title']} {row['summary']} {skills_text}"
         content_texts.append(content_text)
     
@@ -535,6 +540,10 @@ def recommend_content_semantic(requirements, programs_df, top_n=3):
         if top_recommendations:
             recommendations_df = pd.concat(top_recommendations)
     
+    if 'skills' in recommendations_df.columns:
+        recommendations_df['skills'] = recommendations_df['skills'].apply(
+            lambda x: tuple(x) if isinstance(x, (list, tuple)) else x
+        )
     return recommendations_df
 
 # ============== UI COMPONENTS ==============
@@ -731,7 +740,7 @@ def display_recommendation_card(row, req, best_idx, is_duplicate, req_recommenda
                 skills_raw = row_data.get('skills', [])
                 skills = get_scalar(skills_raw)
                     
-                if isinstance(skills, list) and skills:
+                if isinstance(skills, (list, tuple)) and skills:
                     for skill in skills:
                         st.write(f"• {skill}")
                 elif isinstance(skills, str) and skills:
@@ -863,7 +872,7 @@ def display_final_recommendations(all_requirements):
                 # Prepare skills as a formatted string
                 skills_text = ""
                 skills = rec.get('skills', [])
-                if isinstance(skills, list) and skills:
+                if isinstance(skills, (list, tuple)) and skills:
                     skills_text = ", ".join(skills[:5])
                     if len(skills) > 5:
                         skills_text += f" and {len(skills)-5} more"
@@ -958,7 +967,7 @@ def generate_download_data(all_requirements):
                     'Difficulty': rec['difficulty'],
                     'Type': rec['program_type'],
                     'Summary': rec.get('summary', ''),
-                    'Skills': ', '.join(rec.get('skills', [])) if isinstance(rec.get('skills', []), list) else rec.get('skills', ''),
+                    'Skills': ', '.join(rec.get('skills', [])) if isinstance(rec.get('skills', []), (list, tuple)) else rec.get('skills', ''),
                     'Similarity Score': rec.get('similarity_score', '')
                 })
             else:
