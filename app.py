@@ -7,6 +7,7 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 import fitz  # PyMuPDF
 import nltk
+import numpy as np
 from nltk.tokenize import sent_tokenize
 from nltk.corpus import wordnet as wn
 import humanize
@@ -27,6 +28,7 @@ try:
     from advanced_nlp import (
         extract_advanced_requirements,
         compute_semantic_similarity,
+        get_sentence_transformer,
         SENTENCE_TRANSFORMERS_AVAILABLE,
         SPACY_AVAILABLE,
         nlp,
@@ -297,7 +299,20 @@ def prepare_programs_df():
                 
                 programs_df['skills'] = programs_df['skills'].apply(safe_eval_skills)
                 programs_df['skills'] = programs_df['skills'].apply(lambda x: tuple(x))
-            
+
+            # Precompute semantic text and embeddings if possible
+            if SENTENCE_TRANSFORMERS_AVAILABLE:
+                model = get_sentence_transformer()
+                if model:
+                    programs_df['semantic_text'] = programs_df.apply(
+                        lambda row: f"{row['title']} {row['summary']} {' '.join(row['skills'])}",
+                        axis=1,
+                    )
+                    try:
+                        programs_df['embedding'] = list(model.encode(programs_df['semantic_text'].tolist()))
+                    except Exception as e:
+                        st.warning(f"Embedding computation failed: {e}")
+
             st.success(f"Loaded {len(programs_df)} programs from local file")
             return programs_df
     except Exception as e:
@@ -362,6 +377,19 @@ def prepare_programs_df():
         # Create DataFrame - all columns will be object type initially
         programs_df = pd.DataFrame(programs)
         
+        # Precompute semantic text and embeddings if possible
+        if SENTENCE_TRANSFORMERS_AVAILABLE:
+            model = get_sentence_transformer()
+            if model is not None:
+                programs_df['semantic_text'] = programs_df.apply(
+                    lambda row: f"{row['title']} {row['summary']} {' '.join(row['skills'])}",
+                    axis=1,
+                )
+                try:
+                    programs_df['embedding'] = list(model.encode(programs_df['semantic_text'].tolist()))
+                except Exception as e:
+                    st.warning(f"Embedding computation failed: {e}")
+
         # Save to CSV for future use, with careful error handling
         try:
             programs_df.to_csv(DATA_PATH, index=False)
@@ -476,17 +504,27 @@ def recommend_content_tfidf(requirements, programs_df, top_n=3):
 @st.cache_data
 def recommend_content_semantic(requirements, programs_df, top_n=3):
     """Return recommended content based on extracted learning requirements using semantic search"""
-    
+
     # Prepare content texts for comparison
-    content_texts = []
-    for _, row in programs_df.iterrows():
-        # Combine title, summary, and skills into a single text
-        skills_text = ' '.join(row['skills']) if isinstance(row['skills'], (list, tuple)) else str(row['skills'])
-        content_text = f"{row['title']} {row['summary']} {skills_text}"
-        content_texts.append(content_text)
-    
-    # Calculate semantic similarity
-    similarity_matrix = compute_semantic_similarity(requirements, content_texts)
+    if 'semantic_text' in programs_df.columns:
+        content_texts = programs_df['semantic_text'].tolist()
+    else:
+        content_texts = []
+        for _, row in programs_df.iterrows():
+            skills_text = ' '.join(row['skills']) if isinstance(row['skills'], (list, tuple)) else str(row['skills'])
+            content_text = f"{row['title']} {row['summary']} {skills_text}"
+            content_texts.append(content_text)
+
+    # Calculate semantic similarity using cached embeddings if available
+    if 'embedding' in programs_df.columns:
+        content_embeddings = np.array(programs_df['embedding'].tolist())
+        similarity_matrix = compute_semantic_similarity(
+            requirements,
+            content_items=None,
+            content_embeddings=content_embeddings,
+        )
+    else:
+        similarity_matrix = compute_semantic_similarity(requirements, content_texts)
     
     if similarity_matrix is None:
         # Fall back to TF-IDF if sentence transformers fails

@@ -2,6 +2,7 @@ import os
 import re
 import nltk
 import numpy as np
+from functools import lru_cache
 from nltk.corpus import stopwords
 from nltk.tokenize import sent_tokenize
 from sklearn.feature_extraction.text import TfidfVectorizer
@@ -96,7 +97,8 @@ TECH_PATTERNS = {
     ]
 }
 
-# Load the sentence transformer model
+# Load the sentence transformer model and cache it
+@lru_cache(maxsize=1)
 def get_sentence_transformer():
     """Load and return a sentence transformer model."""
     if not SENTENCE_TRANSFORMERS_AVAILABLE:
@@ -465,20 +467,25 @@ def extract_advanced_requirements(text, max_requirements=15):
     return final_requirements[:max_requirements]
 
 # Function to compute similarity between requirements and content
-def compute_semantic_similarity(requirements, content_items):
-    """
-    Compute semantic similarity between requirements and content items
+def compute_semantic_similarity(requirements, content_items=None, content_embeddings=None):
+    """Compute semantic similarity between requirements and content.
+
+    Provide either ``content_items`` (raw text) or ``content_embeddings`` to
+    avoid recomputing embeddings for static content.
     """
     # Get the model
     model = get_sentence_transformer()
     if not model:
         return None
-    
+
     # Generate embeddings
     requirement_embeddings = model.encode(requirements)
-    content_embeddings = model.encode(content_items)
-    
+    if content_embeddings is None:
+        if content_items is None:
+            raise ValueError("Either content_items or content_embeddings must be provided")
+        content_embeddings = model.encode(content_items)
+
     # Compute similarity matrix
     similarity_matrix = cosine_similarity(requirement_embeddings, content_embeddings)
-    
+
     return similarity_matrix
