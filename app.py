@@ -1,6 +1,7 @@
 import os
 import re
 import sys
+from io import BytesIO
 import pandas as pd
 import streamlit as st
 from sklearn.feature_extraction.text import TfidfVectorizer
@@ -975,13 +976,22 @@ def display_final_recommendations(all_requirements):
     download_data = generate_download_data(all_requirements)
     download_df = pd.DataFrame(download_data)
     download_csv = download_df.to_csv(index=False)
-    
+
     # Add download button for CSV with final recommendations
     st.download_button(
         label="Download Final Recommendations as CSV",
         data=download_csv,
         file_name="final_recommendations.csv",
         mime="text/csv",
+    )
+
+    # Generate downloadable XLSX with hyperlinks
+    download_xlsx = generate_download_excel(all_requirements)
+    st.download_button(
+        label="Download Final Recommendations as XLSX",
+        data=download_xlsx,
+        file_name="final_recommendations.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     )
     
     # Add button to start over
@@ -1024,6 +1034,53 @@ def generate_download_data(all_requirements):
                     'Similarity Score': ''
                 })
     return download_data
+
+def generate_download_excel(all_requirements):
+    """Generate an XLSX file with embedded hyperlinks"""
+    excel_rows = []
+    for req in all_requirements:
+        if req in st.session_state['accepted_recommendations']:
+            rec = st.session_state['accepted_recommendations'][req]
+            if rec is not None:
+                skills_text = ""
+                skills = rec.get('skills', [])
+                if isinstance(skills, (list, tuple)) and skills:
+                    skills_text = ", ".join(skills[:5])
+                    if len(skills) > 5:
+                        skills_text += f" and {len(skills)-5} more"
+
+                summary = rec.get('summary', "")
+                summary_preview = summary[:100] + "..." if len(summary) > 100 else summary
+
+                excel_rows.append({
+                    'Requirement': req,
+                    'Course Recommendation': rec['program_title'],
+                    'URL': rec['url'],
+                    'Duration': rec['duration'],
+                    'Recommendation Reason': f"{summary_preview} | Skills: {skills_text} | {rec.get('recommendation_reason', '')}",
+                })
+            else:
+                excel_rows.append({
+                    'Requirement': req,
+                    'Course Recommendation': 'No matching courses found',
+                    'URL': '',
+                    'Duration': 'N/A',
+                    'Recommendation Reason': 'No recommendations could be generated for this requirement',
+                })
+
+    df = pd.DataFrame(excel_rows)
+    output = BytesIO()
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        df.drop(columns=['URL']).to_excel(writer, index=False, sheet_name='Recommendations')
+        ws = writer.sheets['Recommendations']
+        for idx, url in enumerate(df['URL'], start=2):
+            if url:
+                cell = ws.cell(row=idx, column=2)
+                cell.value = df.loc[idx-2, 'Course Recommendation']
+                cell.hyperlink = url
+                cell.style = 'Hyperlink'
+    output.seek(0)
+    return output.getvalue()
 
 def main():
     """Main application function"""
