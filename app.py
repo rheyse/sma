@@ -607,6 +607,12 @@ def display_recommendations_ui(filtered_df, all_requirements, programs_df):
     # Track the currently showing recommendation for each requirement
     if 'current_recommendation' not in st.session_state:
         st.session_state['current_recommendation'] = {}  # Dict to track current recommendation per requirement
+
+    # Maintain ordered indices and pointer for faster navigation
+    if 'recommendation_indices' not in st.session_state:
+        st.session_state['recommendation_indices'] = {}
+    if 'current_index' not in st.session_state:
+        st.session_state['current_index'] = {}
         
     # Add debug switch to examine internal state
     if st.checkbox("Debug Mode", value=False, key="debug_mode"):
@@ -614,6 +620,8 @@ def display_recommendations_ui(filtered_df, all_requirements, programs_df):
         st.write(st.session_state['rejected_indices'])
         st.write("Current recommendations:")
         st.write(st.session_state['current_recommendation'])
+        st.write("Current index pointers:")
+        st.write(st.session_state.get('current_index', {}))
 
     # Check if filtered_df is empty
     if filtered_df.empty:
@@ -645,40 +653,47 @@ def display_recommendations_ui(filtered_df, all_requirements, programs_df):
                 st.warning(f"No matching courses found for: {req}")
                 continue
             
-            # Initialize rejected indices and history for this requirement if not already done
+            # Initialize state for this requirement if not already done
             if req not in st.session_state['rejected_indices']:
                 st.session_state['rejected_indices'][req] = set()
             if req not in st.session_state['rejection_history']:
                 st.session_state['rejection_history'][req] = []
+            if req not in st.session_state['recommendation_indices']:
+                st.session_state['recommendation_indices'][req] = req_recommendations.index.tolist()
+            if req not in st.session_state['current_index']:
+                st.session_state['current_index'][req] = 0
                 
             # Debug: Show current rejected indices
             if st.session_state.get('debug_mode', False):
                 st.write(f"Rejected indices for {req}: {st.session_state['rejected_indices'][req]}")
                 st.write(f"Available indices: {req_recommendations.index.tolist()}")
             
-            # Find recommendations that haven't been rejected
-            available_rows = []
-            for idx, row in req_recommendations.iterrows():
-                # Convert to string for consistent comparison
-                str_idx = str(idx)
-                if str_idx not in {str(i) for i in st.session_state['rejected_indices'].get(req, set())}:
-                    available_rows.append((idx, row))
-            
-            # If all recommendations have been rejected
-            if not available_rows:
+            # Use pointer to find next non-rejected recommendation
+            pointer = st.session_state['current_index'][req]
+            indices = st.session_state['recommendation_indices'][req]
+            rejected_set = {str(i) for i in st.session_state['rejected_indices'].get(req, set())}
+            while pointer < len(indices) and str(indices[pointer]) in rejected_set:
+                pointer += 1
+            st.session_state['current_index'][req] = pointer
+
+            # If we've exhausted all recommendations
+            if pointer >= len(indices):
                 st.info(f"All available recommendations for '{req}' have been reviewed. No more alternatives available.")
                 # Allow user to search the catalog even when everything is rejected
                 render_program_search(req, programs_df, req_recommendations['program_key'].tolist())
                 # Reset rejection state to start over if user clicks
                 if st.button(f"Start Over for '{req}'", key=f"start_over_{req}"):
                     st.session_state['rejected_indices'][req] = set()
+                    st.session_state['rejection_history'][req] = []
+                    st.session_state['current_index'][req] = 0
                     if req in st.session_state['current_recommendation']:
                         del st.session_state['current_recommendation'][req]
                     st.rerun()
                 continue
-            
+
             # Get the best non-rejected recommendation
-            best_idx, best_row = available_rows[0]
+            best_idx = indices[pointer]
+            best_row = req_recommendations.loc[best_idx]
             
             # Store the current recommendation for this requirement
             st.session_state['current_recommendation'][req] = {
@@ -728,7 +743,10 @@ def display_recommendations_ui(filtered_df, all_requirements, programs_df):
         # Add a button to reset all rejections - also at the bottom
         if st.button("Reset All Rejections"):
             st.session_state['rejected_indices'] = {}
+            st.session_state['rejection_history'] = {}
             st.session_state['current_recommendation'] = {}
+            st.session_state['current_index'] = {}
+            st.session_state['recommendation_indices'] = {}
             st.rerun()
 
 def display_recommendation_card(row, req, best_idx, is_duplicate, req_recommendations, programs_df):
@@ -839,10 +857,10 @@ def display_recommendation_card(row, req, best_idx, is_duplicate, req_recommenda
         
         with cols[2]:
             # Calculate how many recommendations we've gone through
-            rejection_count = len(st.session_state['rejected_indices'].get(req, set()))
+            current_idx = st.session_state['current_index'].get(req, 0)
             total_count = len(req_recommendations)
-            
-            st.write(f"Showing recommendation {rejection_count + 1} of {total_count}")
+
+            st.write(f"Showing recommendation {current_idx + 1} of {total_count}")
 
             # Reject button - now with unique key
             if st.button(f"Reject & Show Next", key=f"reject_{unique_id}"):
@@ -856,11 +874,14 @@ def display_recommendation_card(row, req, best_idx, is_duplicate, req_recommenda
                 st.session_state['rejected_indices'][req].add(str(best_idx))
                 st.session_state['rejection_history'][req].append(str(best_idx))
 
+                # Move pointer forward
+                st.session_state['current_index'][req] = st.session_state['current_index'].get(req, 0) + 1
+
                 # Remove from current recommendation if present
                 if req in st.session_state['current_recommendation'] and \
                    str(st.session_state['current_recommendation'][req]['idx']) == str(best_idx):
                     del st.session_state['current_recommendation'][req]
-                    
+
                 # Debug the rejection if in debug mode
                 if st.session_state.get('debug_mode', False):
                     st.write(f"Added {best_idx} to rejected indices for {req}")
@@ -874,6 +895,7 @@ def display_recommendation_card(row, req, best_idx, is_duplicate, req_recommenda
                 if history:
                     last_idx = history.pop()
                     st.session_state['rejected_indices'][req].discard(last_idx)
+                    st.session_state['current_index'][req] = max(st.session_state['current_index'].get(req, 1) - 1, 0)
                     if req in st.session_state['current_recommendation']:
                         del st.session_state['current_recommendation'][req]
                     st.rerun()
@@ -889,6 +911,7 @@ def display_recommendation_card(row, req, best_idx, is_duplicate, req_recommenda
                 all_indices = {str(i) for i in req_recommendations.index}
                 st.session_state['rejected_indices'][req] = all_indices
                 st.session_state['rejection_history'][req] = list(all_indices)
+                st.session_state['current_index'][req] = len(req_recommendations)
                 if req in st.session_state['current_recommendation']:
                     del st.session_state['current_recommendation'][req]
                 st.rerun()
