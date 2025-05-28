@@ -9,6 +9,7 @@ This is a Streamlit-based content recommendation engine that processes natural l
 - **NLP Processing**: Process the extracted text to identify key learning requirements.
 - **Content Matching**: Match identified requirements with available learning content.
 - **Interactive Results**: View recommendations with relevance scores and direct links.
+- **Downloadable Output**: Export final recommendations as CSV or XLSX with embedded hyperlinks.
 
 ## Installation
 

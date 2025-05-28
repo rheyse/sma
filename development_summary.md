@@ -22,7 +22,7 @@ The Content Recommendation Engine is a Streamlit-based application that analyzes
 - **Interactive Cards**: Recommendation cards with expandable sections
 - **Reject/Accept**: Interactive buttons to approve or reject recommendations
 - **Filters**: Multi-select filters for program type, difficulty, and duration
-- **Result Download**: CSV export with comprehensive information
+ - **Result Download**: CSV or XLSX export with comprehensive information
 
 ## Key Enhancements
 
@@ -44,7 +44,7 @@ The Content Recommendation Engine is a Streamlit-based application that analyzes
 - Added proper type checking for all data fields
 - Implemented clean conversion between API responses and DataFrames
 - Enhanced summary and skills display with proper formatting
-- Added CSV export with comprehensive information
+- Added CSV and XLSX export with comprehensive information
 - Implemented duration categorization (Hours, Days, Weeks, Months)
 
 ## Bug Fixes
@@ -76,7 +76,7 @@ The application now provides a comprehensive recommendation system where users c
 4. Interactively review, reject, and accept recommendations
 5. See detailed course information including summaries and skills
 6. Generate a final selection table with embedded hyperlinks
-7. Download results as CSV with detailed information
+7. Download results as CSV or XLSX with detailed information
 
 ## Future Improvements
 Potential areas for future enhancement:
