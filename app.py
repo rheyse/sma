@@ -1197,9 +1197,27 @@ def main():
         st.header("Select Filters")
         cols = st.columns(3)
 
-        program_types_all = programs_df['program_type'].unique().tolist()
-        difficulties_all = programs_df['difficulty'].unique().tolist()
-        duration_categories_all = programs_df['duration_category'].unique().tolist()
+        program_types_all = (
+            programs_df['program_type']
+            .dropna()
+            .astype(str)
+            .unique()
+            .tolist()
+        )
+        difficulties_all = (
+            programs_df['difficulty']
+            .dropna()
+            .astype(str)
+            .unique()
+            .tolist()
+        )
+        duration_categories_all = (
+            programs_df['duration_category']
+            .dropna()
+            .astype(str)
+            .unique()
+            .tolist()
+        )
 
         if 'selected_program_types' not in st.session_state:
             st.session_state['selected_program_types'] = program_types_all
