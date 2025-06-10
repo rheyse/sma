@@ -9,6 +9,7 @@ from sklearn.metrics.pairwise import cosine_similarity
 import fitz  # PyMuPDF
 import nltk
 import numpy as np
+import math
 from nltk.tokenize import sent_tokenize
 from nltk.corpus import wordnet as wn
 import humanize
@@ -1197,14 +1198,21 @@ def main():
         st.header("Select Filters")
         cols = st.columns(3)
 
-        program_types_all = programs_df['program_type'].unique().tolist()
-        difficulties_all = programs_df['difficulty'].unique().tolist()
-        duration_categories_all = programs_df['duration_category'].unique().tolist()
+        program_types_all = programs_df['program_type'].dropna().unique().tolist()
+        difficulties_all = [
+            d for d in programs_df['difficulty'].dropna().unique().tolist()
+            if str(d).strip() and not (isinstance(d, float) and math.isnan(d))
+        ]
+        duration_categories_all = programs_df['duration_category'].dropna().unique().tolist()
 
         if 'selected_program_types' not in st.session_state:
             st.session_state['selected_program_types'] = program_types_all
         if 'selected_difficulties' not in st.session_state:
             st.session_state['selected_difficulties'] = difficulties_all
+        else:
+            st.session_state['selected_difficulties'] = [
+                d for d in st.session_state['selected_difficulties'] if d in difficulties_all
+            ] or difficulties_all
         if 'selected_duration_categories' not in st.session_state:
             st.session_state['selected_duration_categories'] = duration_categories_all
 
