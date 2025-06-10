@@ -316,6 +316,10 @@ def prepare_programs_df():
                     except Exception as e:
                         st.warning(f"Embedding computation failed: {e}")
 
+            # Add duration category for filtering
+            if 'duration' in programs_df.columns:
+                programs_df['duration_category'] = programs_df['duration'].apply(categorize_duration)
+
             st.success(f"Loaded {len(programs_df)} programs from local file")
             return programs_df
     except Exception as e:
@@ -393,6 +397,10 @@ def prepare_programs_df():
                     programs_df['embedding'] = programs_df['embedding'].apply(lambda x: tuple(map(float, x)))
                 except Exception as e:
                     st.warning(f"Embedding computation failed: {e}")
+
+        # Add duration category for filtering
+        if 'duration' in programs_df.columns:
+            programs_df['duration_category'] = programs_df['duration'].apply(categorize_duration)
 
         # Save to CSV for future use, with careful error handling
         try:
@@ -1179,112 +1187,133 @@ def main():
     # ========== RECOMMENDATION SECTION ==========
     if learning_requirements:
         st.header("Learning Requirements Summary")
-        
+
         # Display a summary of the requirements
         st.markdown("The following learning requirements were identified:")
         for i, req in enumerate(learning_requirements, 1):
             st.markdown(f"{i}. {req}")
-        
-        # Generate recommendations
-        st.header("Generating Recommendations...")
-        
-        # Try semantic search first if available
-        if SENTENCE_TRANSFORMERS_AVAILABLE:
-            st.info("Using semantic search for recommendations...")
-            semantic_recommendations = recommend_content_semantic(
-                learning_requirements, programs_df, top_n=5
+
+        # ========== FILTER SELECTION ==========
+        st.header("Select Filters")
+        cols = st.columns(3)
+
+        program_types_all = (
+            programs_df['program_type']
+            .dropna()
+            .astype(str)
+            .unique()
+            .tolist()
+        )
+        difficulties_all = (
+            programs_df['difficulty']
+            .dropna()
+            .astype(str)
+            .unique()
+            .tolist()
+        )
+        duration_categories_all = (
+            programs_df['duration_category']
+            .dropna()
+            .astype(str)
+            .unique()
+            .tolist()
+        )
+
+        if 'selected_program_types' not in st.session_state:
+            st.session_state['selected_program_types'] = program_types_all
+        if 'selected_difficulties' not in st.session_state:
+            st.session_state['selected_difficulties'] = difficulties_all
+        if 'selected_duration_categories' not in st.session_state:
+            st.session_state['selected_duration_categories'] = duration_categories_all
+
+        with cols[0]:
+            st.subheader("Program Type")
+            selected_program_types = st.multiselect(
+                "Select Program Types",
+                options=program_types_all,
+                default=st.session_state['selected_program_types'],
+                key="filter_program_type"
             )
-            st.success("Semantic recommendations generated")
-            
-            # Fall back to TF-IDF if semantic search returned empty results
-            if semantic_recommendations.empty:
-                st.info("Falling back to TF-IDF search...")
-                tfidf_recommendations = recommend_content_tfidf(
-                    learning_requirements, programs_df, top_n=5
-                )
-                all_recommendations = tfidf_recommendations
-            else:
-                # Add TF-IDF recommendations as well
-                st.info("Adding TF-IDF recommendations for comparison...")
-                tfidf_recommendations = recommend_content_tfidf(
-                    learning_requirements, programs_df, top_n=3
-                )
-                
-                # Mark the source in each DataFrame
-                if not semantic_recommendations.empty:
-                    semantic_recommendations['recommendation_source'] = 'Semantic Search'
-                if not tfidf_recommendations.empty:
-                    tfidf_recommendations['recommendation_source'] = 'TF-IDF'
-                
-                # Combine both sets of recommendations
-                all_recommendations = pd.concat(
-                    [semantic_recommendations, tfidf_recommendations]
-                ).drop_duplicates(subset=['requirement', 'program_key'])
-        else:
-            # If semantic search not available, use TF-IDF only
-            st.info("Using TF-IDF for recommendations (semantic search not available)...")
-            all_recommendations = recommend_content_tfidf(
-                learning_requirements, programs_df, top_n=5
+
+        with cols[1]:
+            st.subheader("Difficulty")
+            selected_difficulties = st.multiselect(
+                "Select Difficulty Levels",
+                options=difficulties_all,
+                default=st.session_state['selected_difficulties'],
+                key="filter_difficulty"
             )
-            if not all_recommendations.empty:
-                all_recommendations['recommendation_source'] = 'TF-IDF'
-        
-        if all_recommendations.empty:
-            st.warning("No recommendations found for the given requirements")
-        else:
-            st.success(f"Generated {len(all_recommendations)} recommendations")
-            
-            # ========== FILTER SECTION ==========
-            st.header("Filter Recommendations")
-            cols = st.columns(3)
-            
-            # Program Type Filter
-            with cols[0]:
-                st.subheader("Program Type")
-                program_types = all_recommendations['program_type'].unique().tolist()
-                selected_program_types = st.multiselect(
-                    "Select Program Types",
-                    options=program_types,
-                    default=program_types
-                )
-            
-            # Difficulty Filter
-            with cols[1]:
-                st.subheader("Difficulty")
-                difficulties = all_recommendations['difficulty'].unique().tolist()
-                selected_difficulties = st.multiselect(
-                    "Select Difficulty Levels",
-                    options=difficulties,
-                    default=difficulties
-                )
-            
-            # Duration Filter
-            with cols[2]:
-                st.subheader("Duration")
-                
-                # Categorize durations for easier filtering
-                all_recommendations['duration_category'] = all_recommendations['duration'].apply(categorize_duration)
-                duration_categories = all_recommendations['duration_category'].unique().tolist()
-                
-                selected_duration_categories = st.multiselect(
-                    "Select Duration Ranges",
-                    options=duration_categories,
-                    default=duration_categories
-                )
-            
-            # Apply filters
-            filtered_recommendations = all_recommendations[
-                all_recommendations['program_type'].isin(selected_program_types) &
-                all_recommendations['difficulty'].isin(selected_difficulties) &
-                all_recommendations['duration_category'].isin(selected_duration_categories)
+
+        with cols[2]:
+            st.subheader("Duration")
+            selected_duration_categories = st.multiselect(
+                "Select Duration Ranges",
+                options=duration_categories_all,
+                default=st.session_state['selected_duration_categories'],
+                key="filter_duration"
+            )
+
+        generate_clicked = st.button("Generate Recommendations", type="primary")
+
+        if generate_clicked:
+            st.session_state['selected_program_types'] = selected_program_types
+            st.session_state['selected_difficulties'] = selected_difficulties
+            st.session_state['selected_duration_categories'] = selected_duration_categories
+            st.session_state['filters_confirmed'] = True
+
+        if st.session_state.get('filters_confirmed'):
+            filtered_programs_df = programs_df[
+                programs_df['program_type'].isin(st.session_state['selected_program_types']) &
+                programs_df['difficulty'].isin(st.session_state['selected_difficulties']) &
+                programs_df['duration_category'].isin(st.session_state['selected_duration_categories'])
             ]
-            
-            if filtered_recommendations.empty:
-                st.warning("No recommendations match the selected filters")
+
+            if filtered_programs_df.empty:
+                st.warning("No programs match the selected filters")
             else:
-                # Display the interactive recommendations UI
-                display_recommendations_ui(filtered_recommendations, learning_requirements, programs_df)
-    
+                st.header("Generating Recommendations...")
+
+                if SENTENCE_TRANSFORMERS_AVAILABLE:
+                    st.info("Using semantic search for recommendations...")
+                    semantic_recommendations = recommend_content_semantic(
+                        learning_requirements, filtered_programs_df, top_n=5
+                    )
+                    st.success("Semantic recommendations generated")
+
+                    if semantic_recommendations.empty:
+                        st.info("Falling back to TF-IDF search...")
+                        tfidf_recommendations = recommend_content_tfidf(
+                            learning_requirements, filtered_programs_df, top_n=5
+                        )
+                        all_recommendations = tfidf_recommendations
+                    else:
+                        st.info("Adding TF-IDF recommendations for comparison...")
+                        tfidf_recommendations = recommend_content_tfidf(
+                            learning_requirements, filtered_programs_df, top_n=3
+                        )
+
+                        if not semantic_recommendations.empty:
+                            semantic_recommendations['recommendation_source'] = 'Semantic Search'
+                        if not tfidf_recommendations.empty:
+                            tfidf_recommendations['recommendation_source'] = 'TF-IDF'
+
+                        all_recommendations = pd.concat(
+                            [semantic_recommendations, tfidf_recommendations]
+                        ).drop_duplicates(subset=['requirement', 'program_key'])
+                else:
+                    st.info("Using TF-IDF for recommendations (semantic search not available)...")
+                    all_recommendations = recommend_content_tfidf(
+                        learning_requirements, filtered_programs_df, top_n=5
+                    )
+                    if not all_recommendations.empty:
+                        all_recommendations['recommendation_source'] = 'TF-IDF'
+
+                if all_recommendations.empty:
+                    st.warning("No recommendations found for the given requirements")
+                else:
+                    st.success(f"Generated {len(all_recommendations)} recommendations")
+                    display_recommendations_ui(all_recommendations, learning_requirements, filtered_programs_df)
+
     else:
         st.info("Upload a file or enter learning requirements to get started")
 
